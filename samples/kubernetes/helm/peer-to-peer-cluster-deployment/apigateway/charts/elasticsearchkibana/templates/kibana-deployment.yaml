@@ -19,7 +19,7 @@
 #  */
 
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   generation: 1
   labels:
@@ -27,13 +27,16 @@ metadata:
     {{- include "apigateway.labels" . | nindent 4 }}
   name: {{ include "apigateway.customPrefix" . }}kibana-ss
 spec:
-  podManagementPolicy: OrderedReady
   replicas: {{ .Values.kibanaCount }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
   revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: kibana-apigateway
-  serviceName: {{ include "apigateway.customPrefix" . }}{{ .Values.kibanaService }}
   template:
     metadata:
       labels:
@@ -60,12 +63,22 @@ spec:
                     sleep 2
                     curl -s {{ $esUrl }} | tee /tmp/tmpfile
                   done
+                  {{- $apigwUrl := printf "%s://%s%s:%s/rest/apigateway/health" .Values.global.apigwHealthProtocol ( include "apigateway.customPrefix" . ) .Values.global.apigwHealthService ( .Values.global.apigwHealthPort | toString) }}
+                  curl --write-out '%{http_code}' --silent --output /dev/null {{ $apigwUrl }} | tee /tmp/tmpfile
+                  tail /tmp/tmpfile
+                  until  grep "200" /tmp/tmpfile  ; do
+                    tail -5 /tmp/tmpfile
+                    echo "volleeeeee"
+                    echo "waiting for API Gateway to be up and running"
+                    sleep 5
+                    curl --write-out '%{http_code}' --silent --output /dev/null {{ $apigwUrl }} | tee /tmp/tmpfile
+                  done
       containers:
       - name: kibana
         env:
         - name: app
           value: kibana-apigateway
-        image:  "{{ .Values.kibanaImage }}:{{ .Values.elasticTag }}"
+        image:  "{{ .Values.kibanaImage }}:{{ .Values.kibanaTag }}"
         imagePullPolicy: IfNotPresent
         resources:
           {{- toYaml .Values.resources.kibanaContainer | nindent 10 }}
@@ -88,6 +101,4 @@ spec:
       volumes:
         - name: kibana-config
           configMap:
-            name: {{ include "apigateway.customPrefix" . }}{{ .Values.kibanaConfigmap }}
-  updateStrategy:
-    type: RollingUpdate
+            name: {{ include "apigateway.customPrefix" . }}{{ .Values.kibanaConfigmap }}  
