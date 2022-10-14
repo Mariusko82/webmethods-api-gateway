@@ -68,7 +68,6 @@ spec:
                   tail /tmp/tmpfile
                   until  grep "200" /tmp/tmpfile  ; do
                     tail -5 /tmp/tmpfile
-                    echo "volleeeeee"
                     echo "waiting for API Gateway to be up and running"
                     sleep 5
                     curl --write-out '%{http_code}' --silent --output /dev/null {{ $apigwUrl }} | tee /tmp/tmpfile

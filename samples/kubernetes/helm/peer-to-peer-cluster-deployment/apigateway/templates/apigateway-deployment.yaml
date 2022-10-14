@@ -101,10 +101,12 @@ spec:
         volumeMounts:
           - name: apigw-config
             mountPath: /opt/softwareag/IntegrationServer/instances/{{ .Values.global.integrationServerInstanceName }}/packages/WmAPIGateway/resources/configuration
-          - name: apigw-license
+          - name: saglic
             mountPath: /opt/softwareag/IntegrationServer/instances/{{ .Values.global.integrationServerInstanceName }}/config/licenseKey.xml
             subPath:   licenseKey.xml
             readOnly:  false
+          # - name: wrapper-log
+          #   mountPath: /opt/softwareag/profiles/IS_default/logs
       imagePullSecrets:
       - name: {{ .Values.global.registryCredentialsName }}
       dnsPolicy: ClusterFirst
@@ -113,6 +115,8 @@ spec:
       terminationGracePeriodSeconds: 30
       serviceAccountName: {{ .Values.clusterDiscoveryAccount }}
       volumes:
+      # - name: wrapper-log
+      #   emptyDir: {}
       - name: apigw-config
         configMap:
           name: {{ include "apigateway.customPrefix" . }}{{ .Values.apigwConfigmap }}
@@ -123,10 +127,13 @@ spec:
             path: elasticsearch.yml
           - key:  ignite-settings.yml
             path: ignite-settings.yml
-      - name: apigw-license
-        configMap:
-          name: {{ .Values.apigwLicenseConfig }}
-          defaultMode: 0666
-          items:
-          - key:  {{ .Values.apigwLicenseFilename }}
-            path: licenseKey.xml
+      # - name: apigw-license
+      #   configMap:
+      #     name: {{ .Values.apigwLicenseConfig }}
+      #     defaultMode: 0666
+      #     items:
+      #     - key:  {{ .Values.apigwLicenseFilename }}
+      #       path: licenseKey.xml
+      - name: saglic
+        secret:
+          secretName: saglic
